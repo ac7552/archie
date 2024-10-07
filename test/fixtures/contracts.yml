@@ -1,0 +1,17 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  project: one
+  freelancer_id: 1
+  client_id: 1
+  content: MyText
+  status: MyString
+  docusign_id: MyString
+
+two:
+  project: two
+  freelancer_id: 1
+  client_id: 1
+  content: MyText
+  status: MyString
+  docusign_id: MyString

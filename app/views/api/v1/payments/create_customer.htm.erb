@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create Customer</title>
+  <meta name="csrf-token" content="<%= csrf_meta_tags %>">
+  <script src="https://js.braintreegateway.com/web/dropin/1.31.0/js/dropin.min.js"></script>
+</head>
+<body>
+  <h1>Create Customer</h1>
+  <form id="customer-form">
+    <label for="email">Email:</label>
+    <input type="email" id="email" name="email" required><br><br>
+    
+    <div id="dropin-container"></div>
+    <button type="submit">Create Customer</button>
+  </form>
+  <div id="form-errors" role="alert"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const clientToken = '<%= @client_token %>'; // The Braintree client token passed from the controller
+      
+      braintree.dropin.create({
+        authorization: clientToken,
+        container: '#dropin-container'
+      }, function (createErr, instance) {
+        if (createErr) {
+          console.error(createErr);
+          return;
+        }
+
+        const form = document.getElementById('customer-form');
+        form.addEventListener('submit', function (event) {
+          event.preventDefault();
+
+          instance.requestPaymentMethod(function (err, payload) {
+            if (err) {
+              console.error(err);
+              return;
+            }
+
+            const email = document.getElementById('email').value;
+
+            // Send the payment method nonce and email to your server
+            fetch('/api/v1/customers', { // Adjust the path as needed
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+              },
+              body: JSON.stringify({
+                payment_method_nonce: payload.nonce,
+                email: email
+              })
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.error) {
+                console.log(data.error);
+              } else {
+                console.log('Customer created successfully!');
+              }
+            });
+          });
+        });
+      });
+    });
+  </script>
+</body>
+</html>

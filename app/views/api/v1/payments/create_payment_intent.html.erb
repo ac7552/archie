@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Create Payment Intent</title>
+  <meta name="csrf-token" content="<%= csrf_meta_tags %>">
+  <script src="https://js.braintreegateway.com/web/dropin/1.31.0/js/dropin.min.js"></script>
+</head>
+<body>
+  <h1>Create Payment Intent</h1>
+  <form id="payment-intent-form">
+    <div id="dropin-container"></div>
+    <button type="submit">Submit Payment</button>
+  </form>
+  <div id="form-errors" role="alert"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const clientToken = '<%= @client_token %>'; // Pass the Braintree client token from the controller
+      
+      braintree.dropin.create({
+        authorization: clientToken,
+        container: '#dropin-container'
+      }, function (createErr, instance) {
+        if (createErr) {
+          console.error(createErr);
+          return;
+        }
+
+        const form = document.getElementById('payment-intent-form');
+        form.addEventListener('submit', function (event) {
+          event.preventDefault();
+
+          instance.requestPaymentMethod(function (err, payload) {
+            if (err) {
+              console.error(err);
+              return;
+            }
+
+            fetch('/api/v1/projects/<%= @project.id %>/milestones/<%= @milestone.id %>/payments/create_payment_intent', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+              },
+              body: JSON.stringify({
+                payment_method_nonce: payload.nonce
+              })
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.error) {
+                console.log(data.error);
+              } else {
+                console.log('Payment Intent created successfully!');
+              }
+            });
+          });
+        });
+      });
+    });
+  </script>
+</body>
+</html>

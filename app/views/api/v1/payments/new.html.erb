@@ -1,0 +1,67 @@
+<html>
+<head>
+  <title>YourAppName</title>
+  <meta name="csrf-token" content="<%= csrf_meta_tags %>">
+  <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body>
+  <form id="payment-form">
+    <input type="email" id="email" placeholder="Email" required />
+    <input type="role" id="role" placeholder="Role" required />
+
+    <div id="card-element"><!-- A Stripe Element will be inserted here. --></div>
+    <button type="submit">Create Customer</button>
+  </form>
+  <div id="card-errors" role="alert"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const stripe = Stripe('<%= Rails.configuration.stripe[:publishable_key] %>');
+      const elements = stripe.elements();
+      const card = elements.create('card');
+      card.mount('#card-element');
+
+      card.on('change', ({error}) => {
+        const displayError = document.getElementById('card-errors');
+        displayError.textContent = error ? error.message : '';
+      });
+
+      const form = document.getElementById('payment-form');
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const email = document.getElementById('email').value;
+        const role = document.getElementById('role').value;
+
+        const { paymentMethod, error } = await stripe.createPaymentMethod({
+          type: 'card',
+          card: card,
+          billing_details: { email: email }
+        });
+
+        if (error) {
+          document.getElementById('card-errors').textContent = error.message;
+        } else {
+          const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+          fetch('/api/v1/projects/<%= @project.id %>/milestones/<%= @milestone.id %>/payments/create_customer', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({ payment_method_id: paymentMethod.id, email: email, role: role })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.error) {
+              console.error(data.error);
+            } else {
+              console.log('Customer created successfully!');
+            }
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
